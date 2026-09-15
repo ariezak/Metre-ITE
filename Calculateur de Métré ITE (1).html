@@ -1,0 +1,995 @@
+<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MétréPro ITE - Calculateur de Métré Isolation Extérieure</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background-color: #ffffff !important; font-size: 11pt; }
+      .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+      .page-break { page-break-after: always; }
+    }
+    .print-only { display: none; }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Navigation Principale -->
+  <header class="no-print bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5 sm:space-x-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-brand-900/30 flex-shrink-0">
+          <i data-lucide="layers" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-base sm:text-lg leading-tight flex items-center gap-1.5 sm:gap-2">
+            MétréPro ITE
+            <span class="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">Artisan Pro</span>
+          </h1>
+          <p class="text-[11px] text-slate-400 hidden xs:block">Calculateur d'isolation extérieure & métrés façades</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-1.5 sm:space-x-3">
+        <button onclick="openClientModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+          <i data-lucide="user-check" class="w-4 h-4 text-brand-400"></i>
+          <span class="hidden sm:inline">Dossier Client</span>
+        </button>
+        <button onclick="window.print()" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-brand-600 hover:bg-brand-500 text-white transition shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Imprimer / PDF</span>
+        </button>
+        <button onclick="confirmResetAll()" class="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition" title="Nouveau chantier / Tout réinitialiser">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- En-tête visible uniquement à l'impression / export PDF -->
+  <div class="print-only p-6 border-b border-slate-300">
+    <div class="flex justify-between items-start">
+      <div>
+        <h1 class="text-2xl font-black tracking-tight text-slate-900">RELEVÉ DE MÉTRÉ QUANTITATIF - ITE</h1>
+        <p class="text-xs text-slate-500">Isolation Thermique par l'Extérieur - Document technique pour commande et devis</p>
+      </div>
+      <div class="text-right">
+        <p class="font-bold text-sm text-slate-800" id="print-date">Date : --/--/----</p>
+        <p class="text-xs text-slate-500" id="print-ref">Réf: -</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+      <div>
+        <span class="font-bold text-slate-700">Client :</span> <span id="print-client">Non renseigné</span><br>
+        <span class="font-bold text-slate-700">Adresse du chantier :</span> <span id="print-address">Non renseigné</span>
+      </div>
+      <div>
+        <span class="font-bold text-slate-700">Téléphone :</span> <span id="print-phone">-</span><br>
+        <span class="font-bold text-slate-700">Fourniture / Marge chutes :</span> <span id="print-waste-ratio">7%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Corps de l'application -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
+
+    <!-- Colonne Gauche : Façades (8 colonnes) -->
+    <div class="lg:col-span-8 space-y-5 sm:space-y-6">
+
+      <!-- Onglets de sélection des 4 Façades -->
+      <div class="no-print bg-white rounded-2xl p-2 shadow-sm border border-slate-200">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="facade-tabs-nav">
+          <!-- Injecté dynamiquement -->
+        </div>
+      </div>
+
+      <!-- Conteneur dynamique de la Façade active -->
+      <div id="active-facade-view" class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 space-y-6">
+        <!-- Rendu dynamique via JS sans rechargement à la frappe -->
+      </div>
+
+    </div>
+
+    <!-- Colonne Droite : Synthèse & Chiffrage (4 colonnes) -->
+    <div class="lg:col-span-4 space-y-6">
+
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 sticky top-20">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <div class="p-1.5 rounded-lg bg-brand-50 text-brand-600">
+              <i data-lucide="calculator" class="w-5 h-5"></i>
+            </div>
+            <h2 class="text-base font-bold text-slate-900">Synthèse Générale</h2>
+          </div>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+            4 Façades
+          </span>
+        </div>
+
+        <!-- Totaux surfaces -->
+        <div class="py-4 space-y-3">
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">Surface brute totale :</span>
+            <span class="font-semibold text-slate-800" id="stat-total-gross">0.00 m²</span>
+          </div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">Total ouvertures déduites :</span>
+            <span class="font-semibold text-rose-600" id="stat-total-openings">- 0.00 m²</span>
+          </div>
+          <div class="pt-2 border-t border-slate-100 flex justify-between items-baseline">
+            <div>
+              <span class="text-sm font-bold text-slate-900">Surface Nette à Isoler</span>
+              <p class="text-[11px] text-slate-400">Total réel des 4 façades</p>
+            </div>
+            <span class="text-2xl font-black text-brand-600" id="stat-total-net">0.00 m²</span>
+          </div>
+        </div>
+
+        <!-- Paramètres chutes et estimation chiffrage -->
+        <div class="no-print mt-2 pt-4 border-t border-slate-100 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+            <span>Commande & Budget Rapide</span>
+            <i data-lucide="coins" class="w-3.5 h-3.5 text-slate-400"></i>
+          </h3>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Marge chutes (%)</label>
+              <div class="relative">
+                <input type="number" id="setting-waste" min="0" max="30" step="1" value="7" inputmode="decimal" oninput="onSettingsInput()"
+                  class="w-full text-xs font-semibold rounded-lg border-slate-200 focus:border-brand-500 focus:ring-brand-500 p-2 pr-6 border">
+                <span class="absolute right-2 top-2 text-xs text-slate-400">%</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Prix indicatif HT</label>
+              <div class="relative">
+                <input type="number" id="setting-price" min="0" step="1" value="130" inputmode="decimal" oninput="onSettingsInput()"
+                  class="w-full text-xs font-semibold rounded-lg border-slate-200 focus:border-brand-500 focus:ring-brand-500 p-2 pr-8 border">
+                <span class="absolute right-2 top-2 text-xs text-slate-400">€/m²</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200 text-xs space-y-1.5">
+            <div class="flex justify-between text-slate-600">
+              <span>Isolant à commander (+chutes) :</span>
+              <span class="font-bold text-slate-900" id="stat-total-order">0.00 m²</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Budget prévisionnel HT :</span>
+              <span class="font-bold text-brand-700" id="stat-total-price">0,00 €</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Décomposition par façade -->
+        <div class="mt-4 pt-4 border-t border-slate-100">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Détail par façade</h4>
+          <ul class="space-y-2 text-xs" id="facade-breakdown-list">
+            <!-- Injecté dynamiquement -->
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modale Dossier Client -->
+  <div id="modal-client" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-100">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+          <i data-lucide="user-check" class="w-5 h-5 text-brand-600"></i>
+          Coordonnées Chantier
+        </h3>
+        <button onclick="closeClientModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nom du client</label>
+          <input type="text" id="input-client-name" placeholder="Ex: M. Jean Martin"
+            class="w-full rounded-lg border-slate-200 focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Adresse des travaux</label>
+          <input type="text" id="input-client-address" placeholder="Ex: 14 rue de la République, 75000 Paris"
+            class="w-full rounded-lg border-slate-200 focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Téléphone</label>
+            <input type="tel" id="input-client-phone" placeholder="06 12 34 56 78"
+              class="w-full rounded-lg border-slate-200 focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Référence / Devis</label>
+            <input type="text" id="input-project-ref" placeholder="ITE-2026-001"
+              class="w-full rounded-lg border-slate-200 focus:border-brand-500 focus:ring-brand-500 text-sm p-2 border">
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 flex justify-end gap-2">
+        <button onclick="closeClientModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Fermer</button>
+        <button onclick="saveClientDetails()" class="px-4 py-2 text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-sm">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale de Confirmation -->
+  <div id="modal-confirm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 text-center">
+      <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 mx-auto flex items-center justify-center">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-base text-slate-900" id="confirm-title">Confirmation</h3>
+        <p class="text-xs text-slate-500 mt-1" id="confirm-desc">Voulez-vous continuer ?</p>
+      </div>
+      <div class="flex gap-2 justify-center pt-2">
+        <button id="btn-confirm-cancel" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+        <button id="btn-confirm-ok" class="px-4 py-2 text-xs font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-sm">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PRESETS = [
+      { name: "Fenêtre 1 vantail (0.80 x 1.25)", width: 0.80, height: 1.25 },
+      { name: "Fenêtre 2 vantaux (1.20 x 1.35)", width: 1.20, height: 1.35 },
+      { name: "Porte-fenêtre (1.40 x 2.15)", width: 1.40, height: 2.15 },
+      { name: "Baie vitrée coulissante (2.40 x 2.15)", width: 2.40, height: 2.15 },
+      { name: "Porte d'entrée (0.90 x 2.15)", width: 0.90, height: 2.15 },
+      { name: "Porte de garage (2.40 x 2.00)", width: 2.40, height: 2.00 },
+      { name: "Fenestron / WC (0.50 x 0.60)", width: 0.50, height: 0.60 },
+      { name: "Ouverture sur-mesure", width: 1.00, height: 1.00 }
+    ];
+
+    const ORIENTATIONS = ["Nord", "Nord-Est", "Est", "Sud-Est", "Sud", "Sud-Ouest", "Ouest", "Nord-Ouest"];
+
+    const INITIAL_TEMPLATE = {
+      project: {
+        clientName: "",
+        address: "",
+        phone: "",
+        reference: "",
+        date: new Date().toLocaleDateString('fr-FR')
+      },
+      settings: {
+        wasteRate: 7,
+        pricePerM2: 130
+      },
+      activeFacadeIndex: 0,
+      facades: [
+        {
+          id: "f-1",
+          name: "Façade Principale",
+          orientation: "Nord",
+          walls: [
+            { id: "w-1-1", name: "Mur entrée", width: 8.5, height: 3.0, hasGable: false, gableHeight: 1.5 }
+          ],
+          openings: [
+            { id: "op-1-1", name: "Fenêtre 2 vantaux", width: 1.2, height: 1.35, count: 2 },
+            { id: "op-1-2", name: "Porte d'entrée", width: 0.9, height: 2.15, count: 1 }
+          ]
+        },
+        {
+          id: "f-2",
+          name: "Pignon Droit",
+          orientation: "Est",
+          walls: [
+            { id: "w-2-1", name: "Pignon Est", width: 9.0, height: 3.0, hasGable: true, gableHeight: 2.2 }
+          ],
+          openings: [
+            { id: "op-2-1", name: "Fenêtre 1 vantail", width: 0.8, height: 1.25, count: 1 }
+          ]
+        },
+        {
+          id: "f-3",
+          name: "Façade Jardin",
+          orientation: "Sud",
+          walls: [
+            { id: "w-3-1", name: "Mur terrasse", width: 8.5, height: 3.0, hasGable: false, gableHeight: 1.5 }
+          ],
+          openings: [
+            { id: "op-3-1", name: "Baie vitrée coulissante", width: 2.4, height: 2.15, count: 2 }
+          ]
+        },
+        {
+          id: "f-4",
+          name: "Pignon Gauche",
+          orientation: "Ouest",
+          walls: [
+            { id: "w-4-1", name: "Pignon Ouest", width: 9.0, height: 3.0, hasGable: true, gableHeight: 2.2 }
+          ],
+          openings: [
+            { id: "op-4-1", name: "Fenestron / WC", width: 0.5, height: 0.6, count: 2 }
+          ]
+        }
+      ]
+    };
+
+    let appState = JSON.parse(JSON.stringify(INITIAL_TEMPLATE));
+    let saveTimeout = null;
+
+    function loadStorage() {
+      try {
+        const saved = localStorage.getItem('metrepro_ite_storage_v2');
+        if (saved) {
+          appState = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn("Erreur chargement LocalStorage:", e);
+      }
+    }
+
+    function scheduleSave() {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        try {
+          localStorage.setItem('metrepro_ite_storage_v2', JSON.stringify(appState));
+        } catch (e) {
+          console.warn("Erreur sauvegarde LocalStorage:", e);
+        }
+      }, 400);
+    }
+
+    function getWallArea(wall) {
+      const w = Math.max(0, parseFloat(wall.width) || 0);
+      const h = Math.max(0, parseFloat(wall.height) || 0);
+      const gh = wall.hasGable ? Math.max(0, parseFloat(wall.gableHeight) || 0) : 0;
+      const rectArea = w * h;
+      const gableArea = (w * gh) / 2;
+      return rectArea + gableArea;
+    }
+
+    function getOpeningArea(opening) {
+      const w = Math.max(0, parseFloat(opening.width) || 0);
+      const h = Math.max(0, parseFloat(opening.height) || 0);
+      const c = Math.max(1, parseInt(opening.count) || 1);
+      return w * h * c;
+    }
+
+    function getFacadeMetrics(facade) {
+      const gross = facade.walls.reduce((acc, w) => acc + getWallArea(w), 0);
+      const openings = facade.openings.reduce((acc, o) => acc + getOpeningArea(o), 0);
+      const net = Math.max(0, gross - openings);
+      return { gross, openings, net };
+    }
+
+    function getGlobalMetrics() {
+      let totalGross = 0;
+      let totalOpenings = 0;
+      let totalNet = 0;
+
+      appState.facades.forEach(f => {
+        const m = getFacadeMetrics(f);
+        totalGross += m.gross;
+        totalOpenings += m.openings;
+        totalNet += m.net;
+      });
+
+      return { totalGross, totalOpenings, totalNet };
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('facade-tabs-nav');
+      if (!container) return;
+
+      container.innerHTML = appState.facades.map((f, i) => {
+        const isActive = i === appState.activeFacadeIndex;
+        const metrics = getFacadeMetrics(f);
+
+        return `
+          <button onclick="switchFacade(${i})" 
+            class="flex flex-col text-left p-3 rounded-xl border transition-all ${
+              isActive 
+                ? 'bg-brand-50 border-brand-500 shadow-sm ring-2 ring-brand-500/20' 
+                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }">
+            <div class="flex items-center justify-between w-full">
+              <span id="tab-orientation-${i}" class="text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-brand-700' : 'text-slate-400'}">
+                ${escapeString(f.orientation)}
+              </span>
+              <span id="tab-walls-${i}" class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${isActive ? 'bg-brand-200/60 text-brand-900' : 'bg-slate-100 text-slate-500'}">
+                ${f.walls.length} mur(s)
+              </span>
+            </div>
+            <div id="tab-name-${i}" class="font-bold text-xs sm:text-sm text-slate-800 mt-1 truncate">
+              ${escapeString(f.name)}
+            </div>
+            <div id="tab-net-${i}" class="mt-2 text-xs font-semibold ${isActive ? 'text-brand-600' : 'text-slate-600'}">
+              ${metrics.net.toFixed(2)} m²
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderActiveFacadeView() {
+      const container = document.getElementById('active-facade-view');
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (!container || !f) return;
+
+      const metrics = getFacadeMetrics(f);
+
+      container.innerHTML = `
+        <!-- En-tête de la Façade -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-100">
+          <div class="flex flex-wrap items-center gap-3">
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Libellé Façade</label>
+              <input type="text" value="${escapeString(f.name)}" oninput="handleFacadeNameInput(${appState.activeFacadeIndex}, this.value)"
+                class="font-bold text-slate-900 text-base sm:text-lg border-b border-dashed border-slate-300 hover:border-brand-500 focus:border-brand-500 bg-transparent px-1 py-0.5 rounded outline-none w-44 sm:w-56">
+            </div>
+
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Orientation</label>
+              <select onchange="handleFacadeOrientationChange(${appState.activeFacadeIndex}, this.value)"
+                class="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg p-2 outline-none cursor-pointer">
+                ${ORIENTATIONS.map(opt => `<option value="${opt}" ${f.orientation === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="confirmResetFacade()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition border border-rose-200" title="Vider les mesures de cette façade">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>Vider cette façade</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 1 : Murs -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+              Pans de mur (<span id="facade-wall-count">${f.walls.length}</span>)
+            </h3>
+            <button onclick="addWall()" class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 transition border border-brand-200">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              Ajouter un mur
+            </button>
+          </div>
+
+          <div class="space-y-3" id="walls-list-container">
+            ${renderWallsHtml(f)}
+          </div>
+        </div>
+
+        <!-- Section 2 : Ouvertures -->
+        <div class="space-y-4 pt-4 border-t border-slate-100">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+              Ouvertures à déduire (<span id="facade-openings-count">${f.openings.length}</span>)
+            </h3>
+            
+            <div>
+              <select id="preset-selector" class="w-full sm:w-auto text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-2 text-slate-700 cursor-pointer" onchange="addPreset(this.value); this.value='';">
+                <option value="">+ Ajouter une ouverture standard...</option>
+                ${PRESETS.map((p, idx) => `<option value="${idx}">${p.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div id="openings-list-container">
+            ${renderOpeningsHtml(f)}
+          </div>
+        </div>
+
+        <!-- Sous-total Façade -->
+        <div class="mt-4 pt-4 border-t border-slate-200 bg-slate-50/80 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
+          <div class="text-xs text-slate-500 space-y-1">
+            <div>Surface brute : <span class="font-semibold text-slate-700" id="facade-gross-display">${metrics.gross.toFixed(2)} m²</span></div>
+            <div>Déductions : <span class="font-semibold text-rose-600" id="facade-openings-display">-${metrics.openings.toFixed(2)} m²</span></div>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Surface Nette Façade</span>
+            <div class="text-2xl font-black text-brand-600" id="facade-net-display">${metrics.net.toFixed(2)} m²</div>
+          </div>
+        </div>
+      `;
+
+      lucide.createIcons();
+    }
+
+    function renderWallsHtml(f) {
+      return f.walls.map((w, wIndex) => {
+        const wallArea = getWallArea(w);
+        return `
+          <div id="wall-row-${wIndex}" class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <input type="text" value="${escapeString(w.name)}" placeholder="Nom du pan" oninput="handleWallNameChange(${wIndex}, this.value)"
+                class="text-xs font-semibold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-500 rounded px-1 py-0.5 outline-none max-w-[160px]">
+              
+              <div class="flex items-center gap-3">
+                <span id="wall-area-${wIndex}" class="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">
+                  ${wallArea.toFixed(2)} m²
+                </span>
+                ${f.walls.length > 1 ? `
+                  <button onclick="removeWall(${wIndex})" class="text-slate-400 hover:text-rose-500 transition p-1" title="Supprimer ce mur">
+                    <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-500 mb-1">Largeur base (m)</label>
+                <input type="number" step="0.01" min="0" inputmode="decimal" value="${w.width || ''}" placeholder="0.00" oninput="handleWallParamInput(${wIndex}, 'width', this.value)"
+                  class="w-full font-semibold p-2 bg-white border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-brand-500">
+              </div>
+              <div>
+                <label class="block text-slate-500 mb-1">Hauteur sous sablière (m)</label>
+                <input type="number" step="0.01" min="0" inputmode="decimal" value="${w.height || ''}" placeholder="0.00" oninput="handleWallParamInput(${wIndex}, 'height', this.value)"
+                  class="w-full font-semibold p-2 bg-white border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-brand-500">
+              </div>
+
+              <div class="col-span-2 sm:col-span-2 flex flex-col justify-center">
+                <label class="flex items-center gap-2 cursor-pointer pt-1 sm:pt-0">
+                  <input type="checkbox" ${w.hasGable ? 'checked' : ''} onchange="handleWallGableToggle(${wIndex}, this.checked)"
+                    class="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 border-slate-300">
+                  <span class="font-medium text-slate-700">Pignon triangulaire</span>
+                </label>
+
+                <div id="gable-container-${wIndex}" class="${w.hasGable ? 'flex' : 'hidden'} items-center gap-2 mt-2">
+                  <span class="text-slate-500">Flèche / Pointe (m) :</span>
+                  <input type="number" step="0.01" min="0" inputmode="decimal" value="${w.gableHeight || ''}" placeholder="0.00" oninput="handleWallParamInput(${wIndex}, 'gableHeight', this.value)"
+                    class="w-20 font-semibold p-1.5 bg-white border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-brand-500">
+                  <span class="text-[10px] text-slate-400">(L x H / 2)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderOpeningsHtml(f) {
+      if (f.openings.length === 0) {
+        return `
+          <div class="p-4 text-center border border-dashed border-slate-200 rounded-xl text-xs text-slate-400">
+            Aucune ouverture déduite sur cette façade (façade pleine).
+          </div>
+        `;
+      }
+
+      return `
+        <div class="space-y-2">
+          ${f.openings.map((op, oIdx) => {
+            const area = getOpeningArea(op);
+            return `
+              <div class="grid grid-cols-12 gap-2 items-center p-2 rounded-lg border border-slate-200 bg-white text-xs hover:border-slate-300 transition">
+                <div class="col-span-12 sm:col-span-4">
+                  <input type="text" value="${escapeString(op.name)}" placeholder="Description" oninput="handleOpeningFieldChange(${oIdx}, 'name', this.value)"
+                    class="w-full font-medium p-1 border-b border-transparent hover:border-slate-200 focus:border-brand-500 outline-none">
+                </div>
+                <div class="col-span-4 sm:col-span-2">
+                  <div class="flex items-center gap-1">
+                    <span class="text-slate-400">L:</span>
+                    <input type="number" step="0.01" min="0" inputmode="decimal" value="${op.width || ''}" placeholder="0.00" oninput="handleOpeningNumberInput(${oIdx}, 'width', this.value)"
+                      class="w-full p-1 border border-slate-200 rounded font-medium">
+                  </div>
+                </div>
+                <div class="col-span-4 sm:col-span-2">
+                  <div class="flex items-center gap-1">
+                    <span class="text-slate-400">H:</span>
+                    <input type="number" step="0.01" min="0" inputmode="decimal" value="${op.height || ''}" placeholder="0.00" oninput="handleOpeningNumberInput(${oIdx}, 'height', this.value)"
+                      class="w-full p-1 border border-slate-200 rounded font-medium">
+                  </div>
+                </div>
+                <div class="col-span-4 sm:col-span-2">
+                  <div class="flex items-center gap-1">
+                    <span class="text-slate-400">Qté:</span>
+                    <input type="number" min="1" step="1" inputmode="numeric" value="${op.count || 1}" oninput="handleOpeningNumberInput(${oIdx}, 'count', this.value)"
+                      class="w-full p-1 border border-slate-200 rounded font-medium text-center">
+                  </div>
+                </div>
+                <div class="col-span-12 sm:col-span-2 flex items-center justify-between sm:justify-end gap-2 text-right pt-1 sm:pt-0">
+                  <span id="opening-area-${oIdx}" class="font-bold text-rose-600">-${area.toFixed(2)} m²</span>
+                  <button onclick="removeOpening(${oIdx})" class="text-slate-300 hover:text-rose-500 p-1" title="Supprimer">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function handleWallParamInput(wallIdx, field, rawValue) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (!f || !f.walls[wallIdx]) return;
+
+      f.walls[wallIdx][field] = rawValue === '' ? '' : parseFloat(rawValue) || 0;
+
+      // Mise à jour uniquement du badge du mur
+      const wallAreaEl = document.getElementById(`wall-area-${wallIdx}`);
+      if (wallAreaEl) {
+        wallAreaEl.textContent = `${getWallArea(f.walls[wallIdx]).toFixed(2)} m²`;
+      }
+
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function handleWallNameChange(wallIdx, value) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (f && f.walls[wallIdx]) {
+        f.walls[wallIdx].name = value;
+        scheduleSave();
+      }
+    }
+
+    function handleWallGableToggle(wallIdx, checked) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (!f || !f.walls[wallIdx]) return;
+
+      f.walls[wallIdx].hasGable = checked;
+      const gableBox = document.getElementById(`gable-container-${wallIdx}`);
+      if (gableBox) {
+        if (checked) {
+          gableBox.classList.remove('hidden');
+          gableBox.classList.add('flex');
+        } else {
+          gableBox.classList.add('hidden');
+          gableBox.classList.remove('flex');
+        }
+      }
+
+      const wallAreaEl = document.getElementById(`wall-area-${wallIdx}`);
+      if (wallAreaEl) {
+        wallAreaEl.textContent = `${getWallArea(f.walls[wallIdx]).toFixed(2)} m²`;
+      }
+
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function handleOpeningNumberInput(oIdx, field, rawValue) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (!f || !f.openings[oIdx]) return;
+
+      if (field === 'count') {
+        f.openings[oIdx][field] = rawValue === '' ? 1 : Math.max(1, parseInt(rawValue) || 1);
+      } else {
+        f.openings[oIdx][field] = rawValue === '' ? '' : parseFloat(rawValue) || 0;
+      }
+
+      // Mise à jour ciblée du texte d'aire de l'ouverture
+      const opAreaEl = document.getElementById(`opening-area-${oIdx}`);
+      if (opAreaEl) {
+        opAreaEl.textContent = `-${getOpeningArea(f.openings[oIdx]).toFixed(2)} m²`;
+      }
+
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function handleOpeningFieldChange(oIdx, field, value) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (f && f.openings[oIdx]) {
+        f.openings[oIdx][field] = value;
+        scheduleSave();
+      }
+    }
+
+    function handleFacadeNameInput(idx, value) {
+      appState.facades[idx].name = value;
+      const tabNameEl = document.getElementById(`tab-name-${idx}`);
+      if (tabNameEl) tabNameEl.textContent = value || `Façade ${idx + 1}`;
+      updateBreakdownOnly();
+      scheduleSave();
+    }
+
+    function handleFacadeOrientationChange(idx, value) {
+      appState.facades[idx].orientation = value;
+      const tabOriEl = document.getElementById(`tab-orientation-${idx}`);
+      if (tabOriEl) tabOriEl.textContent = value;
+      updateBreakdownOnly();
+      scheduleSave();
+    }
+
+    function onSettingsInput() {
+      const wasteInput = document.getElementById('setting-waste');
+      const priceInput = document.getElementById('setting-price');
+      if (wasteInput) appState.settings.wasteRate = parseFloat(wasteInput.value) || 0;
+      if (priceInput) appState.settings.pricePerM2 = parseFloat(priceInput.value) || 0;
+
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function updateCalculationsOnly() {
+      const f = appState.facades[appState.activeFacadeIndex];
+      const fm = getFacadeMetrics(f);
+      const metrics = getGlobalMetrics();
+
+      // Mise à jour affichage sous-total façade active
+      const fg = document.getElementById('facade-gross-display');
+      const fo = document.getElementById('facade-openings-display');
+      const fn = document.getElementById('facade-net-display');
+      if (fg) fg.textContent = `${fm.gross.toFixed(2)} m²`;
+      if (fo) fo.textContent = `-${fm.openings.toFixed(2)} m²`;
+      if (fn) fn.textContent = `${fm.net.toFixed(2)} m²`;
+
+      // Mise à jour de la pastille de l'onglet actif
+      const tabNetEl = document.getElementById(`tab-net-${appState.activeFacadeIndex}`);
+      if (tabNetEl) tabNetEl.textContent = `${fm.net.toFixed(2)} m²`;
+
+      // Totaux globaux
+      const wasteFactor = 1 + (appState.settings.wasteRate / 100);
+      const totalToOrder = metrics.totalNet * wasteFactor;
+      const budgetHT = totalToOrder * appState.settings.pricePerM2;
+
+      const statGross = document.getElementById('stat-total-gross');
+      const statOpenings = document.getElementById('stat-total-openings');
+      const statNet = document.getElementById('stat-total-net');
+      const statOrder = document.getElementById('stat-total-order');
+      const statPrice = document.getElementById('stat-total-price');
+
+      if (statGross) statGross.textContent = `${metrics.totalGross.toFixed(2)} m²`;
+      if (statOpenings) statOpenings.textContent = `- ${metrics.totalOpenings.toFixed(2)} m²`;
+      if (statNet) statNet.textContent = `${metrics.totalNet.toFixed(2)} m²`;
+      if (statOrder) statOrder.textContent = `${totalToOrder.toFixed(2)} m²`;
+      if (statPrice) statPrice.textContent = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(budgetHT);
+
+      updateBreakdownOnly();
+
+      // Impression
+      const pDate = document.getElementById('print-date');
+      const pClient = document.getElementById('print-client');
+      const pAddr = document.getElementById('print-address');
+      const pPhone = document.getElementById('print-phone');
+      const pRef = document.getElementById('print-ref');
+      const pWaste = document.getElementById('print-waste-ratio');
+
+      if (pDate) pDate.textContent = `Date : ${appState.project.date || new Date().toLocaleDateString('fr-FR')}`;
+      if (pClient) pClient.textContent = appState.project.clientName || 'Non renseigné';
+      if (pAddr) pAddr.textContent = appState.project.address || 'Non renseigné';
+      if (pPhone) pPhone.textContent = appState.project.phone || '-';
+      if (pRef) pRef.textContent = `Réf: ${appState.project.reference || '-'}`;
+      if (pWaste) pWaste.textContent = `${appState.settings.wasteRate}% (+chutes = ${totalToOrder.toFixed(2)} m²)`;
+    }
+
+    function updateBreakdownOnly() {
+      const breakdown = document.getElementById('facade-breakdown-list');
+      if (!breakdown) return;
+      const metrics = getGlobalMetrics();
+
+      breakdown.innerHTML = appState.facades.map((facade, index) => {
+        const fm = getFacadeMetrics(facade);
+        const pct = metrics.totalNet > 0 ? ((fm.net / metrics.totalNet) * 100).toFixed(0) : 0;
+        return `
+          <li class="flex items-center justify-between text-slate-600 hover:text-slate-900 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-slate-50 transition" onclick="switchFacade(${index})">
+            <span class="truncate max-w-[150px] font-medium">${escapeString(facade.name)} <span class="text-[10px] text-slate-400">(${escapeString(facade.orientation)})</span></span>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-800">${fm.net.toFixed(2)} m²</span>
+              <span class="text-[10px] text-slate-400 w-8 text-right">${pct}%</span>
+            </div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function switchFacade(idx) {
+      appState.activeFacadeIndex = idx;
+      renderTabs();
+      renderActiveFacadeView();
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function addWall() {
+      const f = appState.facades[appState.activeFacadeIndex];
+      f.walls.push({
+        id: 'w-' + Date.now(),
+        name: `Mur ${f.walls.length + 1}`,
+        width: '',
+        height: '',
+        hasGable: false,
+        gableHeight: ''
+      });
+      renderActiveFacadeView();
+      renderTabs();
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function removeWall(idx) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      if (f.walls.length > 1) {
+        f.walls.splice(idx, 1);
+        renderActiveFacadeView();
+        renderTabs();
+        updateCalculationsOnly();
+        scheduleSave();
+      }
+    }
+
+    function addPreset(index) {
+      if (index === "") return;
+      const preset = PRESETS[parseInt(index, 10)];
+      if (!preset) return;
+
+      const f = appState.facades[appState.activeFacadeIndex];
+      f.openings.push({
+        id: 'op-' + Date.now(),
+        name: preset.name.split(' (')[0],
+        width: preset.width,
+        height: preset.height,
+        count: 1
+      });
+
+      renderActiveFacadeView();
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function removeOpening(idx) {
+      const f = appState.facades[appState.activeFacadeIndex];
+      f.openings.splice(idx, 1);
+      renderActiveFacadeView();
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    let confirmAction = null;
+    function openConfirm(title, desc, action) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-desc').textContent = desc;
+      confirmAction = action;
+      document.getElementById('modal-confirm').classList.remove('hidden');
+    }
+
+    document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+      document.getElementById('modal-confirm').classList.add('hidden');
+      confirmAction = null;
+    });
+
+    document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+      if (confirmAction) confirmAction();
+      document.getElementById('modal-confirm').classList.add('hidden');
+      confirmAction = null;
+    });
+
+    function confirmResetFacade() {
+      openConfirm(
+        "Vider cette façade ?",
+        "Les dimensions et ouvertures de cette façade seront remises à zéro pour entamer une nouvelle mesure.",
+        () => {
+          const f = appState.facades[appState.activeFacadeIndex];
+          f.walls = [
+            { id: 'w-new-' + Date.now(), name: "Mur 1", width: '', height: '', hasGable: false, gableHeight: '' }
+          ];
+          f.openings = [];
+          renderActiveFacadeView();
+          renderTabs();
+          updateCalculationsOnly();
+          scheduleSave();
+        }
+      );
+    }
+
+    function confirmResetAll() {
+      openConfirm(
+        "Nouveau chantier / Réinitialiser ?",
+        "Toutes les façades et les coordonnées clients seront réinitialisées pour démarrer un nouveau relevé.",
+        () => {
+          appState = JSON.parse(JSON.stringify(INITIAL_TEMPLATE));
+          appState.facades.forEach((f, i) => {
+            f.walls = [{ id: 'w-reset-' + i, name: "Mur 1", width: '', height: '', hasGable: false, gableHeight: '' }];
+            f.openings = [];
+          });
+          appState.project = {
+            clientName: "",
+            address: "",
+            phone: "",
+            reference: "",
+            date: new Date().toLocaleDateString('fr-FR')
+          };
+          renderTabs();
+          renderActiveFacadeView();
+          updateCalculationsOnly();
+          syncClientForm();
+          scheduleSave();
+        }
+      );
+    }
+
+    function openClientModal() {
+      syncClientForm();
+      document.getElementById('modal-client').classList.remove('hidden');
+    }
+
+    function closeClientModal() {
+      document.getElementById('modal-client').classList.add('hidden');
+    }
+
+    function syncClientForm() {
+      document.getElementById('input-client-name').value = appState.project.clientName || '';
+      document.getElementById('input-client-address').value = appState.project.address || '';
+      document.getElementById('input-client-phone').value = appState.project.phone || '';
+      document.getElementById('input-project-ref').value = appState.project.reference || '';
+    }
+
+    function saveClientDetails() {
+      appState.project.clientName = document.getElementById('input-client-name').value;
+      appState.project.address = document.getElementById('input-client-address').value;
+      appState.project.phone = document.getElementById('input-client-phone').value;
+      appState.project.reference = document.getElementById('input-project-ref').value;
+      closeClientModal();
+      updateCalculationsOnly();
+      scheduleSave();
+    }
+
+    function escapeString(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStorage();
+      
+      const wasteEl = document.getElementById('setting-waste');
+      const priceEl = document.getElementById('setting-price');
+      if (wasteEl) wasteEl.value = appState.settings.wasteRate ?? 7;
+      if (priceEl) priceEl.value = appState.settings.pricePerM2 ?? 130;
+
+      renderTabs();
+      renderActiveFacadeView();
+      updateCalculationsOnly();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
